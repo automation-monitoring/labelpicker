@@ -193,14 +193,20 @@ class CMKInstance(CMKRESTAPI):
         """Set host labels on checkmk"""
         self.edit_host(hostname, update_attr={"labels": labels})
 
-    def update_labels(self, orig_labels, labels, label_prefix="hwsw/") -> dict:
+    def update_labels(
+        self, orig_labels, labels, label_prefix="hwsw/", enforce_cleanup=False
+    ) -> dict:
         """Compare current / original labels with new labels and update if necessary"""
         updated_labels = orig_labels.copy()
         # {'hwsw/os_vendor': 'Ubuntu', 'hwsw/os_version': '20.04', 'test': 'xy'}
         # Cleanup: remove all labels with known prefix from original labels
         for label in orig_labels:
-            if label.startswith(label_prefix):
-                del updated_labels[label]
+            if enforce_cleanup:
+                if label.lower().startswith(label_prefix.lower()):
+                    del updated_labels[label]
+            else:
+                if label.startswith(label_prefix):
+                    del updated_labels[label]
 
         # Update dict with new labels
         updated_labels.update(labels)

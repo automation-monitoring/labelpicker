@@ -35,6 +35,11 @@ def parse_args():
         action="store_true",
         help="Testmode - no config changes will be applied",
     )
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Cleanup / Refresh all labels with known prefix (ignore case)",
+    )
     return parser.parse_args()
 
 
@@ -49,8 +54,7 @@ if __name__ == "__main__":
     print(bc.h1(__file__.split("/")[-1]))
     config = Config(args.config).read
     wato = lpb.CMKInstance()
-    # Datasources and Strategy must be places as python modules
-    # ~/local/lib/python3/labelpicker/
+    # Datasources must be placed as python modules
     # ~/local/lib/python3/labelpicker/ds_plugins/
 
     for strategy in config["strategies"].keys():
@@ -102,11 +106,20 @@ if __name__ == "__main__":
                     continue
                 # Call update labels function (orig_labels, labels, label_prefix)
                 # Returns dict with updated labels
-                updated_labels = wato.update_labels(
-                    current_labels,
-                    label_definitions[host],
-                    strategy_config["label_prefix"],
-                )
+                if args.cleanup:
+                    updated_labels = wato.update_labels(
+                        current_labels,
+                        label_definitions[host],
+                        strategy_config["label_prefix"],
+                        # honor purge parameter
+                        enforce_cleanup=True,
+                    )
+                else:
+                    updated_labels = wato.update_labels(
+                        current_labels,
+                        label_definitions[host],
+                        strategy_config["label_prefix"],
+                    )
                 if current_labels != updated_labels:
                     changes = True
                     print(f"Labels for host {host} will be updated")
@@ -123,7 +136,11 @@ if __name__ == "__main__":
             print(f"🟢 {len(statistics['hosts_in_cmk'])} (all) Hosts in Checkmk")
 
         if not args.testmode and changes:
-            ret = wato.activate()
+            afc = "activate_foreign_changes"
+            if afc in config and config[afc]:
+                ret = wato.activate(force=True)
+            else:
+                ret = wato.activate()
             try:
                 if ret[0]["title"].startswith("Activation"):
                     print(f"🟢 Activate changes")
