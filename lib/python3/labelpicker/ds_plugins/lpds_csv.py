@@ -41,4 +41,5 @@ class lpds_csv(Strategy):
                 if label_prefix:
                     k = f"{label_prefix}/{k}"
                 collected_labels[host].update({k.strip(): v.strip()})
+
         return collected_labels

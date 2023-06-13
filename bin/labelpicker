@@ -19,15 +19,17 @@ import importlib
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--url", help="URL to Check_MK site")
-    parser.add_argument("-u", "--username", help="name of the automation user")
-    parser.add_argument("-p", "--password", help="secret of the automation user")
-    parser.add_argument("-c", "--config", required=True, help="Path to config file")
+    parser.add_argument(
+        "-i",
+        "--init",
+        action="store_true",
+        help="Initialize label picker default configuration",
+    )
+    parser.add_argument("-u", "--username", help="Name of the automation user")
+    parser.add_argument("-p", "--password", help="Secret of the automation user")
+    parser.add_argument("-c", "--config", default=True, help="Path to config file")
     parser.add_argument(
         "--debug", action="store_true", help="Enable debug mode", default=False
-    )
-    parser.add_argument(
-        "-d", "--dump", action="store_true", help="Dump unique values from the view"
     )
     parser.add_argument(
         "-t",
@@ -52,16 +54,22 @@ if __name__ == "__main__":
     args = parse_args()
     bc = bcolor()
     print(bc.h1(__file__.split("/")[-1]))
-    config = Config(args.config).read
+
+    config_inst = Config(args.config)
+    if args.init:
+        config_inst.init_cfg()
+
+    config = config_inst.get_cfg()
+
     wato = lpb.CMKInstance()
     # Datasources must be placed as python modules
     # ~/local/lib/python3/labelpicker/ds_plugins/
 
-    for strategy in config["strategies"].keys():
-        print(bc.h2(f"Strategy: {strategy}"))
-        strategy_config = config["strategies"][strategy]
+    for strategy in config["datasources"].keys():
+        print(bc.h2(f"Datasource: {strategy}"))
+        strategy_config = config["datasources"][strategy]
         # if pymodule name is set, use it instead of strategy name
-        ds_module = strategy_config.get("pymodule") or strategy
+        ds_module = strategy_config.get("module") or strategy
         try:
             # Import & load datasource module
             datasource = importlib.import_module(f"labelpicker.ds_plugins.{ds_module}")
@@ -97,7 +105,7 @@ if __name__ == "__main__":
         for host in label_definitions:
             if host in cmk_all_hosts:
                 statistics["hosts_in_cmk"].append(host)
-                # Try to get current labels from cmk_all_hosts if key label does not exist, expect no labels definded an return empty dict
+                # Try to get current labels from cmk_all_hosts if key label does not exist, expect no labels defined and return empty dict
                 # All other KeyError will be catched and data structure will be logged
                 try:
                     current_labels = cmk_all_hosts[host]["attributes"].get("labels", {})
@@ -142,7 +150,7 @@ if __name__ == "__main__":
             else:
                 ret = wato.activate()
             try:
-                if ret[0]["title"].startswith("Activation"):
+                if ret["title"].startswith("Activation"):
                     print(f"🟢 Activate changes")
             except Exception:
                 print(f"🔺 Activate changes failed")

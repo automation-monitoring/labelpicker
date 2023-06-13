@@ -9,31 +9,66 @@
 import re
 import yaml
 import sys
+import os
+import requests
+import json
+import base64
+import zlib
 
-# import checkmkapi
-from checkmkapi import CMKRESTAPI
 from abc import ABC, abstractmethod
-import time
+
+
+def _get_automation_secret(username="automation"):
+    """Get automation secret for the given user. Default user is automation"""
+    omd_root = os.environ["OMD_ROOT"]
+    # If automation.secret file for user exists, read credentials from there
+    secret_file = f"{omd_root}/var/check_mk/web/{username}/automation.secret"
+    if os.path.exists(secret_file):
+        secret = open(secret_file).read().strip()
+        return secret
+    else:
+        return False
 
 
 class Config:
     """Read config data"""
 
     def __init__(self, config_file):
-        self.config_file = config_file
-        self.read = self._read_config()
+        if config_file == True:
+            # Use default config file
+            omd_root = os.environ["OMD_ROOT"]
+            self.config_file = os.path.join(omd_root, "etc", "labelpicker.yml")
+        else:
+            self.config_file = config_file
 
-    def _read_config(self):
+    def get_cfg(self):
         """Read config file"""
         # if file ends with .yaml or .yml use yaml loader
         if self.config_file.endswith(".yaml") or self.config_file.endswith(".yml"):
             with open(self.config_file, "r") as f:
                 return yaml.safe_load(f)
-        elif self.config_file.endswith(".conf"):
-            return eval(open(args.config, "r").read())
         else:
             print(f"Unknown config file format: {self.config_file}")
             sys.exit(1)
+
+    def init_cfg(self):
+        """Initialize LabelPicker default configuration file"""
+        init_cfg = "eJyNVE1v2zAMvftXEOgh7RDHTbaTsRUoumILtq5BPXSHpjBUmXGE+kOQ5KTFuv8+yrKdOMnWOpeIfHx8JEUdAfj//rwjeIHv7AGzmeCPqOCiLBYirRQzoizghfyvhE8LXuaS4A8ZgimB54+wQqVt+GQ0HsnJKfhncHMZ/YTz2RSmWlfoUeA+1RcsULEMeK2hTr4LYtyIFTMYL0qFIi1ivmRFijoEo4iWM40xhTcCQg8gs8WFkJVrVLaaFcsqbM+7Gej8mRmmy0px1PsKGj9EDuBHhimDqSAsCXK5ZN1IL9nwWBnbxCFcXH3zp6SyMKV6Ju9XppI1U+hH5cLUfzqvDQbIy6TKrGyZ6Hi51mujEGvPkSVzI4RP8LGWEEuFC/F0FrjjWQO8fGK5pCk5TMFyIrRcQanrUw3bJnBuJ4BJKYrUqaE74XCOYzvcflZbCHdtLUO4lmgvVJFC9KwN5kP4Qfh7Ow735czwZZyqspLxQmSGxhduvDbd3eBKcFVq4oRfokjKtYYIFQ0aJqfjCdxMgIZRJNTIwRAG5wUX1L8Wch0N7t/Mdzx6d2I5yNya5uP/xR/3CU7geJ78/vDnpGOaj2E+gctE1Evlw/w90R1opFQ0Zm52G9nejmHXvpkD3nuHWOiuYPY6x5WFNYM4RMMk40uMm1Xq83UnG9POuWecMf7IaDF7xvOacuJ5ewtxm1sGWEVyicRk99T9ba6BfO5twEp3uN0b23PtvQfNDJtHoZLSPQpA1Yq4UmRbGiN1GATjU3q86Bco1GYLo1FRb5JcFBujZFq3xv1dj24tkutVjG4BGxm9ish9qJrO/PZKuiduy2aT017hZqt8CEwuA+twGRttI5vxL8hy1OM="
+
+        # if config file does not exists, create it
+        if not os.path.exists(self.config_file):
+            # Decode the base64-encoded content
+            decoded_content = base64.b64decode(init_cfg)
+            decompressed_content = zlib.decompress(decoded_content).decode()
+
+            # Write the decompressed content to a new file
+            with open(self.config_file, "w") as file:
+                file.write(decompressed_content)
+
+            print(f"Config file {self.config_file} created.")
+        else:
+            print(f"Config file {self.config_file} already exists. Skipping init.")
+        sys.exit(0)
 
 
 class bcolor:
@@ -77,18 +112,6 @@ class Strategy(ABC):
         pass
 
 
-class WebView(Strategy):
-    """Webview strategy"""
-
-    def source_algorithm(self) -> dict:
-        print("Webview strategy")
-        return {}
-
-    def process_algorithm(self) -> dict:
-        print("Webview strategy")
-        return {}
-
-
 class LableDataProcessor:
     """Primary class to handle label data sourcing & processing strategies"""
 
@@ -106,19 +129,98 @@ class LableDataProcessor:
     def process(self, source_data, **kwargs):
         """Process source data
         Returns dict with host as key and labels as value
-        Example:  {'hwsw/hw_vendor': 'VMware, Inc.',
-                   'hwsw/os_vendor': 'Rhel',
-                   'hwsw/os_version': 'Red Hat Enterprise'}"""
+        Example:
 
+        {'localhost': {'csv/tester': 'Mustermann',
+                       'csv/Building': 'A',
+                       'csv/Owner': 'Internal-IT',
+                       'csv/Room': '305'},
+         'testhost1': {'csv/Building': 'A',
+                       'csv/Owner': 'Test-Automation',
+                       'csv/Room': '305'},
+         'testhost2': {'csv/Building': 'B',
+                       'csv/Owner': 'Test-Automation',
+                       'csv/Room': '104'}}
+        """
         return self.strategy.process_algorithm(source_data, **kwargs)
 
 
-class CMKInstance(CMKRESTAPI):
+class CMKInstance:
     """Interact with checkmk instance"""
 
-    def __init__(self, url=None, username=None, password=None):
-        """Initialize Roberts CMK REST API Class"""
-        super().__init__(url, username, password)
+    def __init__(self, url=None, username="automation", password=None):
+        """Initialize a REST-API instance. URL, User and Secret can be automatically taken from local site if running as site user.
+
+        Args:
+            site_url: the site URL
+            api_user: username of automation user account
+            api_secret: automation secret
+
+        Returns:
+            instance of CMKRESTAPI
+        """
+        if not url:
+            # site_url = _site_url()
+            api_version = "1.0"
+            # use local siteurl from $HOME/etc/apache/conf.d/listen-port.conf
+            omd_root = os.environ["OMD_ROOT"]
+            omd_site = os.environ["OMD_SITE"]
+            f = open(f"{omd_root}/etc/apache/listen-port.conf", "r").readlines()
+            for line in f:
+                if line.startswith("Listen"):
+                    cmk_local_apache = line.split(" ")[1].strip()
+            siteurl = f"http://{cmk_local_apache}/{omd_site}"
+
+            self._api_url = f"{siteurl}/check_mk/api/{api_version}"
+        else:
+            self._api_url = url
+
+        if not password:
+            secret = _get_automation_secret(username)
+        else:
+            secret = password
+
+        self.headers = {
+            "Content-Type": "application/json",
+        }
+
+        self._session = requests.session()
+        self._session.headers["Authorization"] = f"Bearer {username} {secret}"
+        self._session.headers["Accept"] = "application/json"
+
+    def _trans_resp(self, resp):
+        try:
+            data = resp.json()
+        except json.decoder.JSONDecodeError:
+            data = resp.text
+            print(f"JSONDecodeError for data: {data}")
+        return data, resp
+
+    def _request_url(self, method, endpoint, data={}, etag=None):
+        headers = self.headers
+        if etag is not None:
+            headers["If-Match"] = etag
+
+        url = f"{self._api_url}/{endpoint}"
+        request_func = getattr(self._session, method.lower())
+
+        return self._trans_resp(
+            request_func(
+                url,
+                json=data,
+                headers=headers,
+                allow_redirects=False,
+            )
+        )
+
+    def _get_url(self, endpoint, data={}):
+        return self._request_url("GET", endpoint, data)
+
+    def _put_url(self, endpoint, etag, data={}):
+        return self._request_url("PUT", endpoint, data, etag)
+
+    def _post_url(self, endpoint, data={}):
+        return self._request_url("POST", endpoint, data)
 
     def activate(self, sites=[], force=False):
         """Activates pending changes
@@ -126,28 +228,16 @@ class CMKInstance(CMKRESTAPI):
         Args:
             sites: On which sites the configuration shall be activated. An empty list means all sites which have pending changes.
 
-        Returns:
-            (data, etag): usually both empty
         """
-        # sleep for 2s to let API settle down
-        time.sleep(2)
         postdata = {"redirect": False, "sites": sites, "force_foreign_changes": force}
-        data, etag, resp = self._post_url(
+        data, resp = self._post_url(
             "domain-types/activation_run/actions/activate-changes/invoke",
             data=postdata,
         )
         if resp.status_code == 200:
-            # print("Activation successful")
-            return data, etag
-        if resp.status_code == 302:
-            if data.get("domainType") == "activation_run":
-                for link in data.get("links", []):
-                    if link.get("rel") == "urn:com.checkmk:rels/wait-for-completion":
-                        d, e, r = self._wait_for_activation(link.get("href"))
-                        if r.status_code == 204:
-                            return d, e
-                        r.raise_for_status()
-        resp.raise_for_status()
+            return data
+        else:
+            resp.raise_for_status()
 
     def get_all_hosts(self, effective_attr=False, attributes=True):
         """Gets all hosts from the CheckMK configuration.
@@ -157,9 +247,9 @@ class CMKInstance(CMKRESTAPI):
             attributes: If False do not fetch hosts' data
 
         Returns:
-            hosts: Dictionary of host data or dict of hostname -> URL depending on aatributes parameter
+            hosts: Dictionary of host data or dict of hostname -> URL depending on attributes parameter
         """
-        data, etag, resp = self._get_url(
+        data, resp = self._get_url(
             f"domain-types/host_config/collections/all",
             data={"effective_attributes": "true" if effective_attr else "false"},
         )
@@ -174,15 +264,72 @@ class CMKInstance(CMKRESTAPI):
                 pass
         return hosts
 
+    def get_host(self, hostname):
+        """Get current host configuration
+
+        Args:
+            hostname: cmk hostname
+
+        Return:
+            data: {hostconfig}
+        """
+        data, resp = self._get_url(
+            f"objects/host_config/{hostname}", data={"effective_attributes": "false"}
+        )
+        if resp.status_code == 200:
+            return data
+        resp.raise_for_status()
+
+    def get_etag(self, hostname):
+        """Get current etag value for host"""
+        data, resp = self._get_url(
+            f"objects/host_config/{hostname}", data={"effective_attributes": "false"}
+        )
+        if resp.status_code == 200:
+            return resp.headers["etag"]
+        resp.raise_for_status()
+
+    def edit_host(
+        self, hostname, etag=None, set_attr={}, update_attr={}, unset_attr=[]
+    ):
+        """Edit a host in the CheckMK configuration.
+
+        Args:
+            hostname: name of the host
+            etag: (optional) etag value, if not provided the host will be looked up first using get_host().
+            set_attr: Replace all currently set attributes on the host, with these attributes. Any previously set attributes which are not given here will be removed.
+            update_attr: Just update the hosts attributes with these attributes. The previously set attributes will not be touched.
+            unset_attr: A list of attributes which should be removed.
+
+        Returns:
+            (data, etag)
+            data: host's data
+            etag: current etag value
+        """
+        if not etag:
+            etag = self.get_etag(hostname)
+        data, resp = self._put_url(
+            f"objects/host_config/{hostname}",
+            etag,
+            data={
+                "attributes": set_attr,
+                "update_attributes": update_attr,
+                "remove_attributes": unset_attr,
+            },
+        )
+        if resp.status_code == 200:
+            return data, etag
+        resp.raise_for_status()
+
     def host_exists(self, hostname):
         """Check if host exists"""
-        host, etag = self.get_host(hostname)
+        host = self.get_host(hostname)
         return host
 
     def get_labels(self, hostname, object="host"):
         """Get currently defined labels of a host or service object from checkmk"""
         if object == "host":
-            host, etag = self.get_host(hostname)
+            host = self.get_host(hostname)
             labels = host["extensions"]["attributes"].get("labels", {})
         elif object == "service":
             # maybe implemented in future
