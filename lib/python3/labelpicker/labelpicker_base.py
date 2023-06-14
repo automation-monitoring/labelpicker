@@ -53,7 +53,7 @@ class Config:
 
     def init_cfg(self):
         """Initialize LabelPicker default configuration file"""
-        init_cfg = "eJyNVE1v2zAMvftXEOgh7RDHTbaTsRUoumILtq5BPXSHpjBUmXGE+kOQ5KTFuv8+yrKdOMnWOpeIfHx8JEUdAfj//rwjeIHv7AGzmeCPqOCiLBYirRQzoizghfyvhE8LXuaS4A8ZgimB54+wQqVt+GQ0HsnJKfhncHMZ/YTz2RSmWlfoUeA+1RcsULEMeK2hTr4LYtyIFTMYL0qFIi1ivmRFijoEo4iWM40xhTcCQg8gs8WFkJVrVLaaFcsqbM+7Gej8mRmmy0px1PsKGj9EDuBHhimDqSAsCXK5ZN1IL9nwWBnbxCFcXH3zp6SyMKV6Ju9XppI1U+hH5cLUfzqvDQbIy6TKrGyZ6Hi51mujEGvPkSVzI4RP8LGWEEuFC/F0FrjjWQO8fGK5pCk5TMFyIrRcQanrUw3bJnBuJ4BJKYrUqaE74XCOYzvcflZbCHdtLUO4lmgvVJFC9KwN5kP4Qfh7Ow735czwZZyqspLxQmSGxhduvDbd3eBKcFVq4oRfokjKtYYIFQ0aJqfjCdxMgIZRJNTIwRAG5wUX1L8Wch0N7t/Mdzx6d2I5yNya5uP/xR/3CU7geJ78/vDnpGOaj2E+gctE1Evlw/w90R1opFQ0Zm52G9nejmHXvpkD3nuHWOiuYPY6x5WFNYM4RMMk40uMm1Xq83UnG9POuWecMf7IaDF7xvOacuJ5ewtxm1sGWEVyicRk99T9ba6BfO5twEp3uN0b23PtvQfNDJtHoZLSPQpA1Yq4UmRbGiN1GATjU3q86Bco1GYLo1FRb5JcFBujZFq3xv1dj24tkutVjG4BGxm9ish9qJrO/PZKuiduy2aT017hZqt8CEwuA+twGRttI5vxL8hy1OM="
+        init_cfg = "eJyNVNtu2zAMfc9XEMhD2iHObXsKtmJFV2zB1jWoh+6hKQxNZhyhtiRIctJi3b+PshznurUKEFjk4eFNZBsg+vdpteEZvrFfmE8Ff0ADF0rORVYa5oSS8Ez6F8wnkqtCE/xXjuAU8OIBlmisNx/1hj09GkB0BjeX8Q84n05gYm2JLTI8pPqMEg3LgVcxVM73QYw7sWQOk7kyKDKZ8AWTGdoxOEO0nFlMyLwOYNwCyH1yY8jVCo3PZsnyEtf3fQ90/8Qcs6o0HO1hBLUe4gCIYseMw0wQlgIKvnRVyFa64fFhbBOP4eLqazShKKVT5om0X5hJV8xgFKu5qz4arTcGKFRa5j5sndpksbIrZxArTduThRbCB3hfhZBog3PxeNYP17MaePnICk1dChjJCiL0XH1lq1sF2yYI6hAA01rILERDbyLgAse2uT8+tjHcrXPpwrVG/6BkBvGTdVh04Tvh7307wimY44skM6rUyVzkjto33mi9u7vOleBGWeKEn0KmamUhRkONhtFgOIKbEVAzZEqF7HShcy65oPqtIddx5/7VfCe9N6eeg8Rr0Wz4P/uTXYJTOJmlv9/9OW2YZkOYjeAyFdVQRTB7S3RHCqkNtZm7/UKuX0e3Kd80AO9bx1jorWD+MseVh9WNOEbDNOMLTOpR2uVrbt5m3ecd4ZTxB0aDuSM8ryhHrdbBQNwWngGWsV4gMfk55dQ/NINhIjaj0D6YhaVtLPbf7o7qYDPU3azXQ6l1WA9AeYukNCRbOKftuN8fDmiN0a9v0LotjEVDhvT/MVUFE7Ln8nSj1szSVmJpIeRhuhfxrUdyu0wwDOWx3Eh9LK9G/PqcmrW3JfPOadZwM2kR9F2h+14RPNax9bzHv6yT3KI="
 
         # if config file does not exists, create it
         if not os.path.exists(self.config_file):
@@ -120,7 +120,7 @@ class LableDataProcessor:
             self.strategy = strategy
         else:
             # default strategy
-            self.strategy = WebView()
+            pass
 
     def get(self, **kwargs):
         """Get source data"""
