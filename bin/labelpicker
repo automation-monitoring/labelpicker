@@ -53,7 +53,10 @@ def print_err(msg):
 if __name__ == "__main__":
     args = parse_args()
     bc = bcolor()
-    print(bc.h1(__file__.split("/")[-1]))
+    h1_suffix = ""
+    if args.testmode:
+        h1_suffix = " - testmode "
+    print(bc.h1(__file__.split("/")[-1] + h1_suffix))
 
     config_inst = Config(args.config)
     if args.init:
@@ -130,10 +133,11 @@ if __name__ == "__main__":
                     )
                 if current_labels != updated_labels:
                     changes = True
-                    print(f"Labels for host {host} will be updated")
                     if not args.testmode:
                         wato.set_hostlabels(host, updated_labels)
-
+                        print(f"Labels for host {host} updated")
+                    else:
+                        print(f"Labels for host {host} will be updated")
             else:
                 statistics["hosts_not_in_cmk"].append(host)
                 continue
