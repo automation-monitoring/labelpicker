@@ -75,13 +75,15 @@ if __name__ == "__main__":
         ds_module = strategy_config.get("module") or strategy
         try:
             # Import & load datasource module
-            datasource = importlib.import_module(f"labelpicker.ds_plugins.{ds_module}")
-            label_processor = eval(f"lpb.LableDataProcessor(datasource.{ds_module}())")
+            datasource_module = importlib.import_module(
+                f"labelpicker.ds_plugins.{ds_module}"
+            )
+            datasource_class = getattr(datasource_module, ds_module)
+            label_processor = lpb.LableDataProcessor(datasource_class())
 
-        except Exception as e:
-            print(e)
-            print(f"🔺 No datasource implemented for {strategy}")
-            # Continue with next strategy
+        except ImportError:
+            # Handle import error
+            print(f"🔴 Error importing datasource {ds_module}")
             continue
 
         # Get source data, return can be different for each strategy, but must be considered in the process algorithm
