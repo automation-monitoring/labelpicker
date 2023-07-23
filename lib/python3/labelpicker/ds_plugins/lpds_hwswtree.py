@@ -13,7 +13,7 @@ from labelpicker.labelpicker_base import Strategy
 import re
 import os
 import ast
-from cmk.gui.plugins.views import builtin_inventory_plugins
+#from cmk.gui.plugins.views import builtin_inventory_plugins
 
 
 class lpds_hwswtree(Strategy):
@@ -30,9 +30,9 @@ class lpds_hwswtree(Strategy):
             "Model Name": "model",
         }
         # TODO: Use builtin_inventory_plugins.inventory_displayhints for mapping
-        for item, data in builtin_inventory_plugins.inventory_displayhints.items():
-            if "title" in data and type(data["title"]) == str:
-                pass
+        #for item, data in builtin_inventory_plugins.inventory_displayhints.items():
+        #    if "title" in data and type(data["title"]) == str:
+        #        pass
 
         for item in invtree:
             if item in inv_mapping:
