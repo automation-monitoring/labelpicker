@@ -219,8 +219,8 @@ class CMKInstance:
     def _put_url(self, endpoint, etag, data={}):
         return self._request_url("PUT", endpoint, data, etag)
 
-    def _post_url(self, endpoint, data={}):
-        return self._request_url("POST", endpoint, data)
+    def _post_url(self, endpoint, etag, data={}):
+        return self._request_url("POST", endpoint, data, etag)
 
     def activate(self, sites=[], force=False):
         """Activates pending changes
@@ -232,6 +232,7 @@ class CMKInstance:
         postdata = {"redirect": False, "sites": sites, "force_foreign_changes": force}
         data, resp = self._post_url(
             "domain-types/activation_run/actions/activate-changes/invoke",
+            etag="*",
             data=postdata,
         )
         if resp.status_code == 200:
@@ -290,16 +291,14 @@ class CMKInstance:
         resp.raise_for_status()
 
     def edit_host(
-        self, hostname, etag=None, set_attr={}, update_attr={}, unset_attr=[]
+        self, hostname, etag=None, update_attr={}
     ):
         """Edit a host in the CheckMK configuration.
 
         Args:
             hostname: name of the host
             etag: (optional) etag value, if not provided the host will be looked up first using get_host().
-            set_attr: Replace all currently set attributes on the host, with these attributes. Any previously set attributes which are not given here will be removed.
             update_attr: Just update the hosts attributes with these attributes. The previously set attributes will not be touched.
-            unset_attr: A list of attributes which should be removed.
 
         Returns:
             (data, etag)
@@ -312,9 +311,7 @@ class CMKInstance:
             f"objects/host_config/{hostname}",
             etag,
             data={
-                "attributes": set_attr,
-                "update_attributes": update_attr,
-                "remove_attributes": unset_attr,
+                "update_attributes": update_attr
             },
         )
         if resp.status_code == 200:
