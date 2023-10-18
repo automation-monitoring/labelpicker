@@ -219,8 +219,8 @@ class CMKInstance:
     def _put_url(self, endpoint, etag, data={}):
         return self._request_url("PUT", endpoint, data, etag)
 
-    def _post_url(self, endpoint, data={}):
-        return self._request_url("POST", endpoint, data)
+    def _post_url(self, endpoint, data={}, etag=None):
+        return self._request_url("POST", endpoint, data, etag)
 
     def activate(self, sites=[], force=False):
         """Activates pending changes
@@ -233,6 +233,7 @@ class CMKInstance:
         data, resp = self._post_url(
             "domain-types/activation_run/actions/activate-changes/invoke",
             data=postdata,
+            etag="*",
         )
         if resp.status_code == 200:
             return data
@@ -306,16 +307,20 @@ class CMKInstance:
             data: host's data
             etag: current etag value
         """
+
+        if set_attr:
+            data = {"attributes": set_attr}
+        elif update_attr:
+            data = {"update_attributes": update_attr}
+        elif unset_attr:
+            data = {"remove_attributes": unset_attr}
+
         if not etag:
             etag = self.get_etag(hostname)
         data, resp = self._put_url(
             f"objects/host_config/{hostname}",
             etag,
-            data={
-                "attributes": set_attr,
-                "update_attributes": update_attr,
-                "remove_attributes": unset_attr,
-            },
+            data=data,
         )
         if resp.status_code == 200:
             return data, etag
