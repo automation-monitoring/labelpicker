@@ -13,7 +13,8 @@ from labelpicker.labelpicker_base import Strategy
 import re
 import os
 import ast
-#from cmk.gui.plugins.views import builtin_inventory_plugins
+
+# from cmk.gui.plugins.views import builtin_inventory_plugins
 
 
 class lpds_hwswtree(Strategy):
@@ -30,7 +31,7 @@ class lpds_hwswtree(Strategy):
             "Model Name": "model",
         }
         # TODO: Use builtin_inventory_plugins.inventory_displayhints for mapping
-        #for item, data in builtin_inventory_plugins.inventory_displayhints.items():
+        # for item, data in builtin_inventory_plugins.inventory_displayhints.items():
         #    if "title" in data and type(data["title"]) == str:
         #        pass
 
@@ -97,9 +98,18 @@ class lpds_hwswtree(Strategy):
                         for id, rmap in row_mapping.items():
                             if id == inv_tree[index - 1]:
                                 for row in data[obj]["Rows"]:
-                                    if row[rmap[0]] == inv_tree[index]:
+                                    # Convert both the pattern and the target text to strings
+                                    pattern = str(inv_tree[index])
+                                    target_text = str(row[rmap[0]])
+
+                                    # Now use re.search() to match the pattern anywhere in the target_text
+                                    if re.search(pattern, target_text):
                                         self.label_content = row[rmap[1]]
                                         break
+                                    # if re.search(inv_tree[index], row[rmap[0]]):
+                                    # if row[rmap[0]] == inv_tree[index]:
+                                    #    self.label_content = row[rmap[1]]
+                                    #    break
                 else:
                     # try to dig deeper
                     try:
