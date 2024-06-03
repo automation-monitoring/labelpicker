@@ -145,8 +145,15 @@ class lpds_hwswtree(Strategy):
                         )
                     else:
                         k = definition["labelname"]
-                    # try to apply matchgroup filter if defined
+                    regex_value_filter = definition.get("regex_value_filter", None)
+                    # Todo: Should be implemented in labelpicker_base.py
+                    # if regex_value_filter is defined, check if label_content matches regex and define variable v. If not skip the complete label
+                    if regex_value_filter:
+                        if not re.search(regex_value_filter, self.label_content):
+                            continue
+
                     v = self.label_content
+                    # try to apply matchgroup filter if defined
                     match_group_filters = definition.get("match_group_filters", None)
                     if match_group_filters:
                         for filter in match_group_filters:
