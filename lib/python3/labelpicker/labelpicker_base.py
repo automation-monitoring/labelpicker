@@ -232,7 +232,6 @@ class CMKInstance:
         postdata = {"redirect": False, "sites": sites, "force_foreign_changes": force}
         data, resp = self._post_url(
             "domain-types/activation_run/actions/activate-changes/invoke",
-            etag="*",
             data=postdata,
             etag="*",
         )
@@ -299,7 +298,9 @@ class CMKInstance:
         Args:
             hostname: name of the host
             etag: (optional) etag value, if not provided the host will be looked up first using get_host().
+            set_attr: Replace all currently set attributes on the host, with these attributes. Any previously set attributes which are not given here will be removed.
             update_attr: Just update the hosts attributes with these attributes. The previously set attributes will not be touched.
+            unset_attr: A list of attributes which should be removed.
 
         Returns:
             (data, etag)
