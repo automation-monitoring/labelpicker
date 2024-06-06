@@ -75,12 +75,6 @@ class lpds_hwswtree(Strategy):
         If behind this key is NOT an empty dict try to read Attributes or Table values
         Else: try to use the inv_tree key to dig deeper via recursion.
         """
-        row_mapping = {
-            "packages": ("name", "version"),
-            "routes": ("target", "gateway"),
-            "interfaces": ("index", "speed"),
-            "modules": ("manufacturer", "model"),
-        }
 
         deep_inv_tree = len(inv_tree) - 1
         self.label_content = None
@@ -96,7 +90,7 @@ class lpds_hwswtree(Strategy):
                         self.label_content = str(data[obj]["Pairs"][inv_tree[index]])
                 elif obj == "Table":
                     if "Rows" in data[obj]:
-                        for id, rmap in row_mapping.items():
+                        for id, rmap in self.table_row_mapping.items():
                             if id == inv_tree[index - 1]:
                                 for row in data[obj]["Rows"]:
                                     # Convert both the pattern and the target text to strings
@@ -107,10 +101,6 @@ class lpds_hwswtree(Strategy):
                                     if re.search(pattern, target_text):
                                         self.label_content = row[rmap[1]]
                                         break
-                                    # if re.search(inv_tree[index], row[rmap[0]]):
-                                    # if row[rmap[0]] == inv_tree[index]:
-                                    #    self.label_content = row[rmap[1]]
-                                    #    break
                 else:
                     # try to dig deeper
                     try:
@@ -128,6 +118,13 @@ class lpds_hwswtree(Strategy):
         if not mapping:
             print("No mapping config found")
             return {}
+        self.table_row_mapping = kwargs.get("table_row_mapping", None)
+        if not self.table_row_mapping:
+            table_row_mapping = {
+                "packages": ("name", "version"),
+                "routes": ("target", "gateway"),
+                "interfaces": ("index", "speed"),
+            }
 
         filter_blacklist = []
         for host, data in source_data.items():
