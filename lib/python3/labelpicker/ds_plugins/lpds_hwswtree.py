@@ -79,6 +79,7 @@ class lpds_hwswtree(Strategy):
             "packages": ("name", "version"),
             "routes": ("target", "gateway"),
             "interfaces": ("index", "speed"),
+            "modules": ("manufacturer", "model"),
         }
 
         deep_inv_tree = len(inv_tree) - 1
