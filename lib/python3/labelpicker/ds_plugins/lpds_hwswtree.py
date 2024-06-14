@@ -120,7 +120,7 @@ class lpds_hwswtree(Strategy):
             return {}
         self.table_row_mapping = kwargs.get("table_row_mapping", None)
         if not self.table_row_mapping:
-            table_row_mapping = {
+            self.table_row_mapping = {
                 "packages": ("name", "version"),
                 "routes": ("target", "gateway"),
                 "interfaces": ("index", "speed"),
