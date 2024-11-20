@@ -56,7 +56,7 @@ class lpds_hwswtree(Strategy):
 
         # iterate over all files in inventory_dir and evaluate them
         for host in os.listdir(inventory_dir):
-            if not re.match("(^\.|.*\.gz$)", host):
+            if not re.match(r"(^\.|.*\.gz$)", host):
                 if debug:
                     print(f"DEBUG: Parsing {host}")
                 with open(f"{inventory_dir}/{host}", "r") as file:
