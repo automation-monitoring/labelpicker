@@ -64,7 +64,13 @@ if __name__ == "__main__":
 
     config = config_inst.get_cfg()
 
-    wato = lpb.CMKInstance()
+    try:
+        wato = lpb.CMKInstance()
+    except Exception as e:
+        print_err(
+            f"🔴 Error connecting to Checkmk site via REST API!\n --> Site started and apache running?"
+        )
+        sys.exit(1)
     # Datasources must be placed as python modules
     # ~/local/lib/python3/labelpicker/ds_plugins/
 
