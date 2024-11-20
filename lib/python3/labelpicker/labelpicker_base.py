@@ -187,6 +187,8 @@ class CMKInstance:
         self._session.headers["Authorization"] = f"Bearer {username} {secret}"
         self._session.headers["Accept"] = "application/json"
 
+        self.version = self.get_version()
+
     def _trans_resp(self, resp):
         try:
             data = resp.json()
@@ -287,6 +289,13 @@ class CMKInstance:
         )
         if resp.status_code == 200:
             return resp.headers["etag"]
+        resp.raise_for_status()
+
+    def get_version(self):
+        """Get CheckMK version"""
+        data, resp = self._get_url("version")
+        if resp.status_code == 200:
+            return data
         resp.raise_for_status()
 
     def edit_host(
