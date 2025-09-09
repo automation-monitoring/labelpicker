@@ -372,17 +372,16 @@ class CMKInstance:
         updated_labels.update(labels)
         return updated_labels
 
-
 def case_conversion(label_definitions, params, prefix) -> dict:
     converted = {}
     for host, data in label_definitions.items():
         converted[host] = {}
         for k, v in data.items():
-            if "label" in params:
-                k = k.split(prefix)[1]
-                k = getattr(k, params["label"])()
+            if "label" in params and k.startswith(f"{prefix}/"):
+                stripped_key = k[len(prefix) + 1:]  # remove prefix + "/"
+                stripped_key = getattr(stripped_key, params["label"])()
+                k = f"{prefix}/{stripped_key}"
             if "value" in params:
                 v = getattr(v, params["value"])()
-
-            converted[host].update({f"{prefix}{k}": v})
+            converted[host][k] = v
     return converted
