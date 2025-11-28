@@ -9,8 +9,8 @@
 import labelpicker.labelpicker_base as lpb
 from labelpicker.labelpicker_base import bcolor
 from labelpicker.labelpicker_base import Config
+from labelpicker.labelpicker_base import LabelpickerLog
 
-import pprint
 import argparse
 import sys
 import importlib
@@ -53,7 +53,9 @@ def print_err(msg):
 if __name__ == "__main__":
     args = parse_args()
     bc = bcolor()
+    spacer = "=" * 45
     h1_suffix = ""
+
     if args.testmode:
         h1_suffix = " - testmode "
     print(bc.h1(__file__.split("/")[-1] + h1_suffix))
@@ -63,18 +65,28 @@ if __name__ == "__main__":
         config_inst.init_cfg()
 
     config = config_inst.get_cfg()
+    # Use loglevel if set in config file
+    loglevel = config.get("loglevel", "error")
+    log = LabelpickerLog(loglevel)
+
+    log.info(spacer)
+    log.info(f"Starting labelpicker run (testmode={args.testmode})")
+    log.info(spacer)
 
     try:
         wato = lpb.CMKInstance()
     except Exception as e:
-        print_err(
-            f"🔴 Error connecting to Checkmk site via REST API!\n --> Site started and apache running?"
-        )
+        err_msg = f"Error connecting to Checkmk site via REST API!"
+        log.error(err_msg)
+        log.debug(f"Exception details: {e}")
+        print_err(f"🔴 {err_msg}\n --> Site started and apache running?")
         sys.exit(1)
     # Datasources must be placed as python modules
     # ~/local/lib/python3/labelpicker/ds_plugins/
 
+    log.debug("Iterating over datasources")
     for strategy in config["datasources"].keys():
+        log.info(f"Processing datasource strategy: {strategy}")
         print(bc.h2(f"Datasource: {strategy}"))
         strategy_config = config["datasources"][strategy]
         # if pymodule name is set, use it instead of strategy name
@@ -89,10 +101,13 @@ if __name__ == "__main__":
 
         except ImportError:
             # Handle import error
-            print(f"🔴 Error importing datasource {ds_module}")
+            err_msg = f"Error importing datasource module: {ds_module}"
+            log.error(err_msg)
+            print_err(f"🔴 {err_msg}\n --> Check if module exists?")
             continue
 
         # Get source data, return can be different for each strategy, but must be considered in the process algorithm
+        log.debug("Getting source data")
         source_data = label_processor.get(**strategy_config)
         print(f"Source data: {sys.getsizeof(str(source_data))} Bytes")
         # Process source data and create label definitions
@@ -109,11 +124,19 @@ if __name__ == "__main__":
                 label_definitions, case_conversion_method, prefix
             )
 
+        # Replace colons in label values if configured
+        colon_replacement = config.get("colon_replacement")
+        if colon_replacement:
+            label_definitions = lpb.replace_colon_in_values(
+                label_definitions, colon_replacement
+            )
+
         # Apply label definitions to checkmk instance
         changes = False
         statistics = {"hosts_in_cmk": [], "hosts_not_in_cmk": []}
         cmk_all_hosts = wato.get_all_hosts()
         for host in label_definitions:
+            log.debug(f"Processing host: {host}")
             if host in cmk_all_hosts:
                 statistics["hosts_in_cmk"].append(host)
                 # Try to get current labels from cmk_all_hosts if key label does not exist, expect no labels defined and return empty dict
@@ -121,7 +144,9 @@ if __name__ == "__main__":
                 try:
                     current_labels = cmk_all_hosts[host]["attributes"].get("labels", {})
                 except KeyError:
-                    pprint.pprint(cmk_all_hosts[host])
+                    log.error(
+                        f"KeyError accessing labels for host {host}: {cmk_all_hosts[host]}"
+                    )
                     continue
                 # Call update labels function (orig_labels, labels, label_prefix)
                 # Returns dict with updated labels
@@ -142,8 +167,17 @@ if __name__ == "__main__":
                 if current_labels != updated_labels:
                     changes = True
                     if not args.testmode:
-                        wato.set_hostlabels(host, updated_labels)
-                        print(f"Labels for host {host} updated")
+                        try:
+                            log.debug(f"Updating labels for host {host}")
+                            log.debug(
+                                f"Current labels: {current_labels}, New labels: {updated_labels}"
+                            )
+                            wato.set_hostlabels(host, updated_labels)
+                            print(f"Labels for host {host} updated")
+                        except Exception as e:
+                            err_msg = f"Error updating labels for host {host} with new labels {updated_labels}!"
+                            log.error(err_msg)
+                            print(f"🔴 {err_msg}")
                     else:
                         print(f"Labels for host {host} will be updated")
             else:
@@ -165,5 +199,9 @@ if __name__ == "__main__":
                 if ret["title"].startswith("Activation"):
                     print(f"🟢 Activate changes")
             except Exception:
+                log.error(f"Activate changes failed: {ret}")
                 print(f"🔺 Activate changes failed")
-                pprint.pprint(ret)
+
+    log.info(spacer)
+    log.info("Labelpicker run completed successfully")
+    log.info(spacer)
