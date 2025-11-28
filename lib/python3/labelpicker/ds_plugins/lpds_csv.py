@@ -37,7 +37,7 @@ class lpds_csv(Strategy):
             collected_labels[host] = {}
             # update collected_labels with host and label
             for label in row[1].split(","):
-                k, v = label.split(":")
+                k, v = label.split(":", 1)
                 if label_prefix:
                     k = f"{label_prefix}/{k}"
                 collected_labels[host].update({k.strip(): v.strip()})
