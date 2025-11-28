@@ -6,16 +6,100 @@
 # This file is part of the Checkmk Labelpicker project (https://labelpicker.mk)
 
 
-import re
+import re  # type: ignore
 import yaml
 import sys
 import os
 import requests
 import json
-import base64
+import base64  # type: ignore
 import zlib
+import logging
 
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod  # type: ignore
+
+# Module-level logger
+_logger = None
+
+
+def setup_logging(loglevel="error", logfile=None):
+    """Setup logging configuration for labelpicker
+
+    Args:
+        loglevel: Logging level (debug, info, warning, error, critical)
+        logfile: Path to log file (defaults to OMD_ROOT/var/log/labelpicker.log)
+    """
+    global _logger
+
+    if not logfile:
+        omd_root = os.environ["OMD_ROOT"]
+        logfile = f"{omd_root}/var/log/labelpicker.log"
+
+    # Configure root logger
+    if loglevel != "none":
+        level = getattr(logging, loglevel.upper(), logging.ERROR)
+        logging.basicConfig(
+            level=level,
+            format="%(asctime)s %(levelname)s [%(name)s]: %(message)s",
+            handlers=[logging.FileHandler(logfile)],
+            force=True,
+        )
+    else:
+        logging.disable()
+
+    _logger = logging.getLogger("labelpicker")
+    return _logger
+
+
+def get_logger(name=None):
+    """Get a logger instance
+
+    Args:
+        name: Logger name (uses calling module name if not provided)
+
+    Returns:
+        Logger instance
+    """
+    if name:
+        return logging.getLogger(name)
+
+    # Auto-detect calling module
+    import inspect
+
+    frame = inspect.currentframe()
+    try:
+        caller_frame = frame.f_back
+        caller_module = caller_frame.f_globals.get("__name__", "unknown")
+        if caller_module == "__main__":
+            caller_file = caller_frame.f_globals.get("__file__", "unknown")
+            if caller_file != "unknown":
+                caller_module = os.path.splitext(os.path.basename(caller_file))[0]
+        return logging.getLogger(caller_module)
+    finally:
+        del frame
+
+
+# Backward compatibility wrapper
+class LabelpickerLog:
+    """Legacy logging wrapper for backward compatibility"""
+
+    def __init__(self, loglevel="error", logfile=None):
+        self._logger = setup_logging(loglevel, logfile)
+
+    def debug(self, msg):
+        get_logger().debug(msg)
+
+    def info(self, msg):
+        get_logger().info(msg)
+
+    def warning(self, msg):
+        get_logger().warning(msg)
+
+    def error(self, msg):
+        get_logger().error(msg)
+
+    def critical(self, msg):
+        get_logger().critical(msg)
 
 
 def _get_automation_secret(username="automation"):
@@ -372,16 +456,43 @@ class CMKInstance:
         updated_labels.update(labels)
         return updated_labels
 
+
 def case_conversion(label_definitions, params, prefix) -> dict:
     converted = {}
     for host, data in label_definitions.items():
         converted[host] = {}
         for k, v in data.items():
             if "label" in params and k.startswith(f"{prefix}/"):
-                stripped_key = k[len(prefix) + 1:]  # remove prefix + "/"
+                stripped_key = k[len(prefix) + 1 :]  # remove prefix + "/"
                 stripped_key = getattr(stripped_key, params["label"])()
                 k = f"{prefix}/{stripped_key}"
             if "value" in params:
                 v = getattr(v, params["value"])()
             converted[host][k] = v
     return converted
+
+
+def replace_colon_in_values(label_definitions, replacement_char="=") -> dict:
+    """Replace colons in label values with a specified character
+
+    Args:
+        label_definitions: dict of hosts with their label key-value pairs
+        replacement_char: character to replace colons with (default: '=')
+
+    Returns:
+        dict with colons replaced in all label values
+    """
+    logger = get_logger("labelpicker")
+    replaced = {}
+    for host, data in label_definitions.items():
+        replaced[host] = {}
+        for k, v in data.items():
+            # Replace colons in the value
+            if isinstance(v, str) and ":" in v:
+                old_value = v
+                v = v.replace(":", replacement_char)
+                logger.warning(
+                    f"Replaced ':' in label value for host '{host}', label '{k}': '{old_value}' -> '{v}'"
+                )
+            replaced[host][k] = v
+    return replaced
