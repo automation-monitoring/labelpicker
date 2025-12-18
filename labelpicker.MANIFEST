@@ -21,7 +21,9 @@
                 'Version 1.2.1 add new config parameter colon_replacement for '
                 'label values\n'
                 'Version 1.2.2 cleanup logging\n'
-                'Version 1.2.3 log start / stop  + pprints removed\n',
+                'Version 1.2.3 log start / stop  + pprints removed\n'
+                'Version 1.2.4 Fix issue handling args user & password from '
+                'cmd \n',
  'download_url': 'https://labelpicker.mk',
  'files': {'bin': ['labelpicker'],
            'lib': ['python3/labelpicker/ds_plugins/lpds_csv.py',
@@ -30,7 +32,7 @@
                    'python3/labelpicker/ds_plugins/lpds_vsphere.py']},
  'name': 'labelpicker',
  'title': 'LabelPicker',
- 'version': '1.2.3',
+ 'version': '1.2.4',
  'version.min_required': '2.2.0p4',
  'version.packaged': '2.3.0p27',
  'version.usable_until': None}
