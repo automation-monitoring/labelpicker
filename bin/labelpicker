@@ -74,7 +74,14 @@ if __name__ == "__main__":
     log.info(spacer)
 
     try:
-        wato = lpb.CMKInstance()
+        # Use provided username and password if set
+        if args.username and args.password:
+            wato = lpb.CMKInstance(username=args.username, password=args.password)
+        elif args.username or args.password:
+            log.warning("Both --username and --password must be provided together")
+            wato = lpb.CMKInstance()
+        else:
+            wato = lpb.CMKInstance()
     except Exception as e:
         err_msg = f"Error connecting to Checkmk site via REST API!"
         log.error(err_msg)
