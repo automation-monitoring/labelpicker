@@ -67,6 +67,7 @@ class lpds_hwswtree(Strategy):
                     content = content.replace("null", "None")
                     
                     try:
+                        host = re.sub(r'\.json$', '', host)
                         parsed[host] = ast.literal_eval(content)
                     except SyntaxError as e:
                         print(f"Syntax error in file {host}: {e}")
