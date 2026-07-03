@@ -61,6 +61,11 @@ class lpds_hwswtree(Strategy):
                     print(f"DEBUG: Parsing {host}")
                 with open(f"{inventory_dir}/{host}", "r") as file:
                     content = file.read()
+
+                    content = content.replace("false", "False")
+                    content = content.replace("true", "True")
+                    content = content.replace("null", "None")
+                    
                     try:
                         parsed[host] = ast.literal_eval(content)
                     except SyntaxError as e:
